@@ -7,7 +7,10 @@
         var myConnector = tableau.makeConnector();
 
         myConnector.getSchema = function (schemaCallback) {
-            var cols = [{ id: "id", dataType: tableau.dataTypeEnum.string }]; // Tableau necesita una columna inicial
+            var cols = [
+                { id: "id", dataType: tableau.dataTypeEnum.string },
+                { id: "metadata", dataType: tableau.dataTypeEnum.string }
+            ];
             var tableSchema = { id: "VTA_ARAGORN", columns: cols };
             schemaCallback([tableSchema]);
         };
@@ -15,21 +18,43 @@
         myConnector.getData = function (table, doneCallback) {
             fetch("https://apis-us.diligentoneplatform.com/v1/orgs/24951/tables/1859274/records", {
                 method: "GET",
-                headers: { "Authorization": "Bearer 4cf68783ba50146116800b4b804e9298cfcd1bb5ff809a7c168adc311c975246" }
+                headers: { 
+                    "Authorization": "Bearer 4cf68783ba50146116800b4b804e9298cfcd1bb5ff809a7c168adc311c975246",
+                    "Accept": "application/vnd.api+json"
+                }
             })
             .then(response => response.json())
             .then(resp => {
-                table.appendRows(resp.data.map(row => ({ "id": row.id })));
+                var tableData = resp.data.map(row => ({
+                    "id": row.id,
+                    "metadata": JSON.stringify(row.attributes)
+                }));
+                table.appendRows(tableData);
+                doneCallback();
+            })
+            .catch(error => {
+                tableau.log("Error en fetch: " + error);
                 doneCallback();
             });
         };
 
         tableau.registerConnector(myConnector);
-        window.onload = function() { tableau.submit(); };
+
+        // Función para que el botón active la conexión
+        function iniciarConexion() {
+            tableau.connectionName = "Datos Diligent VTA_ARAGORN";
+            tableau.submit();
+        };
+
+        window.onload = function() {
+            document.getElementById("btnConectar").onclick = iniciarConexion;
+        };
     })();
     </script>
 </head>
-<body>
-    <p>Conectando con Diligent...</p>
+<body style="font-family: Arial; text-align: center; padding-top: 50px;">
+    <h3>Conector Diligent One</h3>
+    <p>Presiona el botón para extraer los registros de la tabla 1859274.</p>
+    <button id="btnConectar" style="padding: 10px 20px; cursor: pointer;">Obtener Datos</button>
 </body>
 </html>
